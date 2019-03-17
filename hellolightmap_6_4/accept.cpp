@@ -80,6 +80,27 @@ bool mouseFistTime = true;
 double deltaTime, lastFrameTime;
 float MAX_PITCH = 80.f;
 
+struct PointLight 
+{
+	glm::vec3 _position;
+	glm::vec3 _color;
+
+	float constant;
+	float linear;
+	float quadratic;
+
+	PointLight(glm::vec3 pos, glm::vec3 clr, float cons, float linr, float quad) :
+		_position(pos), _color(clr), constant(cons), linear(linr), quadratic(quad)
+	{
+
+	}
+};
+PointLight pointLights[] = {
+	PointLight(glm::vec3(0.7f, 0.2f, 2.0f), glm::vec3(.5f, .5f, .5f), 1.f, .09f, .032f),
+	PointLight(glm::vec3(2.3f, -3.3f, -4.0f), glm::vec3(1.f, 0.f, 0.f), 1.f, .09f, .032f),	// color red
+	PointLight(glm::vec3(-4.0f, 2.0f, -12.0f), glm::vec3(0.f, 1.f, 0.f), 1.f, .09f, .032f),	// color green
+	PointLight(glm::vec3(0.0f, 0.0f, -3.0f), glm::vec3(0.f, 0.f, 1.f), 1.f, .09f, .032f),	// color blue
+};
 
 void framebufferCallback(GLFWwindow*, int, int);
 void mouseCallback(GLFWwindow*, double, double);
@@ -186,13 +207,26 @@ int main()
 	glm::mat4 projection = glm::perspective(glm::radians(45.f), (float)WIDTH / (float)HEIGHT, .1f, 100.f);
 	myMateria.getShader()->setMaxtrix("projection", glm::value_ptr(projection));
 
-	// light attribute
-	myMateria.getShader()->setVec3("spotLight.color", glm::vec3(1.f, 1.f, 1.f));
+	// direction light
+	myMateria.getShader()->setVec3("dirLight.color", glm::vec3(1.f, 1.f, 1.f));
+	myMateria.getShader()->setVec3("dirLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
+
+	// point lights
+	int len = sizeof(pointLights) / sizeof(PointLight);
+	for (int i = 0; i < len; i++)
+	{
+		string light = "pointLights[" + to_string(i) + "]";
+		myMateria.getShader()->setVec3(light + ".color", pointLights[i]._color);
+		myMateria.getShader()->setVec3(light + ".position", pointLights[i]._position);
+		myMateria.getShader()->setFloat(light + ".constant", pointLights[i].constant);
+		myMateria.getShader()->setFloat(light + ".linear", pointLights[i].linear);
+		myMateria.getShader()->setFloat(light + ".quadratic", pointLights[i].quadratic);
+	}
+
+	// spot light
+	myMateria.getShader()->setVec3("spotLight.color", glm::vec3(.9f, .9f, .9f));
 	myMateria.getShader()->setFloat("spotLight.innerCutOff", glm::cos(glm::radians(12.5f)));
 	myMateria.getShader()->setFloat("spotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
-	myMateria.getShader()->setFloat("spotLight.constant", 1.f);
-	myMateria.getShader()->setFloat("spotLight.linear", .09f);
-	myMateria.getShader()->setFloat("spotLight.quadratic", .032f);
 
 	#pragma region render loop
 	while (!glfwWindowShouldClose(window))
@@ -217,6 +251,8 @@ int main()
 
 		myMateria.getShader()->setVec3("spotLight.position", cam.getCamPosition());
 		myMateria.getShader()->setVec3("spotLight.direction", cam.getCamDirection());
+
+		myMateria.getShader()->setVec3("viewPos", cam.getCamPosition());
 
 		glBindVertexArray(VAO);
 		glDrawArraysInstanced(GL_TRIANGLES, 0, 36, cubeNum);
